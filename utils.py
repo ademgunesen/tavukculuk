@@ -309,6 +309,8 @@ def colorize_mismatches(ground_truth, prediction):
 
     # Green (1 in both ground truth and prediction)
     green_mask = (ground_truth == 1) & (prediction == 1)
+    # print number of green pixels
+    print(f"Number of green pixels: {np.sum(green_mask)}")
     colorized[green_mask] = [0, 255, 0]  # Green color
 
     # Red (1 in ground truth, 0 in prediction)
@@ -671,8 +673,21 @@ def plot_save_mismatches(dir1,dir2,save_dir):
     masks = natsorted(masks)
     images = natsorted(images)
     for image,mask in zip(images,masks):
+        print(image,mask)
         image_1 = cv2.imread(f"{dir1}/{image}",cv2.IMREAD_GRAYSCALE)
         mask_1 = cv2.imread(f"{dir2}/{mask}",cv2.IMREAD_GRAYSCALE)
+        # check if the image and the mask are the same size
+        if image_1.shape == mask_1.shape:
+            pass
+        else:
+            print(f"Image and mask {image} have different shapes: {image_1.shape} and {mask_1.shape}")
+            continue
+        # check if mask is binary
+        if np.array_equal(np.unique(mask_1), np.array([0, 255])):
+            pass
+        else:
+            print(f"Mask {mask} is not binary")
+            continue
         cv2.imwrite(f"{save_dir}/mismatched_images/{image}.png",colorize_mismatches(image_1>1,mask_1>1))
 
 def delete_black_masks(image_folder, mask_folder,threshold):

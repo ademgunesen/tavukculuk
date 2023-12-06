@@ -11,23 +11,31 @@ augment_conf = {}
 
 datasets_root = "/home/adem/Desktop/Thesis/IDRiD Dataset Collection/Adamlarin Format/"
 
-dataset_conf['preprocessed']      = False
-dataset_conf['denoised']          = True
+dataset_conf['preprocessed']      = True
+dataset_conf['denoised']          = False
 dataset_conf['cropped']           = True
 dataset_conf['crop_size']         = 256
 dataset_conf['stride']            = 256
-dataset_conf['black_ratio_train'] = 1
-dataset_conf['denoising_size']    = 4096
+dataset_conf['black_ratio_train'] = 1 # TODO: Implement this
+dataset_conf['denoising_size']    = 1024
 dataset_conf['resolution']        = 0
 dataset_conf['data']              = "ma"
 ############################################################################################################
 # Derived parameters : Do not change these
-dataset_conf['train_image_dir']   = datasets_root + 'Denoised/' + f'all_{dataset_conf["denoising_size"]}/' + 'train'
-dataset_conf['train_mask_dir']    = datasets_root + "labels/" + "train"
-dataset_conf['val_image_dir']     = datasets_root + 'Denoised/' + f'all_{dataset_conf["denoising_size"]}/' + 'test'
-dataset_conf['val_mask_dir']      = datasets_root + "labels/" + "test"
-dataset_conf['test_image_dir']    = datasets_root + 'Denoised/' + f'all_{dataset_conf["denoising_size"]}/' + 'test'
-dataset_conf['test_mask_dir']     = datasets_root + "labels/" + "test"
+if dataset_conf['denoised']:
+    dataset_conf['train_image_dir']   = datasets_root + 'Denoised/' + f'all_{dataset_conf["denoising_size"]}/' + 'train'
+    dataset_conf['train_mask_dir']    = datasets_root + "labels/" + "train"
+    dataset_conf['val_image_dir']     = datasets_root + 'Denoised/' + f'all_{dataset_conf["denoising_size"]}/' + 'test'
+    dataset_conf['val_mask_dir']      = datasets_root + "labels/" + "test"
+    dataset_conf['test_image_dir']    = datasets_root + 'Denoised/' + f'all_{dataset_conf["denoising_size"]}/' + 'test'
+    dataset_conf['test_mask_dir']     = datasets_root + "labels/" + "test"
+elif dataset_conf['preprocessed']:
+    dataset_conf['train_image_dir']   = datasets_root + 'Preprocessed/' + 'train'
+    dataset_conf['train_mask_dir']    = datasets_root + "labels/" + "train"
+    dataset_conf['val_image_dir']     = datasets_root + 'Preprocessed/' + 'test'
+    dataset_conf['val_mask_dir']      = datasets_root + "labels/" + "test"
+    dataset_conf['test_image_dir']    = datasets_root + 'Preprocessed/' + 'test'
+    dataset_conf['test_mask_dir']     = datasets_root + "labels/" + "test"
 if dataset_conf['cropped']:
     crop_name = f"_crop{dataset_conf['crop_size']}_s{dataset_conf['stride']}"
     dataset_conf['train_image_dir_cropped']   = dataset_conf['train_image_dir'] + crop_name
@@ -44,8 +52,8 @@ model_conf['encoder_weight']    = "imagenet"
 model_conf['activation']        = "sigmoid"
 
 training_conf['batch_size'] = 8
-training_conf['epoch'] = 4
-training_conf['lr'] = 3e-5
+training_conf['epoch'] = 40
+training_conf['lr'] = 5e-5
 training_conf['weight_decay'] = 1e-2
 
 task_conf = {}
@@ -54,11 +62,11 @@ task_conf['model_conf'] = model_conf
 task_conf['training_conf'] = training_conf
 task_conf['augment_conf'] = augment_conf
 
-prepapre_data_step = False
+prepare_data_step = True
 train_step = True
 test_step = True
 
-steps = [prepapre_data_step,train_step,test_step]
+steps = [prepare_data_step,train_step,test_step]
 
 
 def main_task(task_config, steps, device):
@@ -89,25 +97,25 @@ def main_task(task_config, steps, device):
     
 
 
+    
+    model,train_loader= initialize_train_val(
+                                            batch_size = training_conf['batch_size'],
+                                            decoder = model_conf['decoder'],
+                                            encoder = model_conf['encoder'],
+                                            encoder_weight= model_conf['encoder_weight'],
+                                            train_image_dir= dataset_conf['train_image_dir_cropped'],
+                                            train_mask_dir = dataset_conf['train_mask_dir_cropped'],
+                                            resolution= dataset_conf['resolution'],
+                                            activation = model_conf['activation'], 
+                                            data = dataset_conf['data']
+                                            )
+                                
+    test_loader  = get_test_data(model_conf['encoder'],
+                                model_conf['encoder_weight'],
+                                dataset_conf['test_image_dir_cropped'],
+                                os.path.join(dataset_conf['test_mask_dir_cropped'],dataset_conf['data']),
+                                resolution=0)
     if train_step:
-        model,train_loader= initialize_train_val(
-                                                batch_size = training_conf['batch_size'],
-                                                decoder = model_conf['decoder'],
-                                                encoder = model_conf['encoder'],
-                                                encoder_weight= model_conf['encoder_weight'],
-                                                train_image_dir= dataset_conf['train_image_dir_cropped'],
-                                                train_mask_dir = dataset_conf['train_mask_dir_cropped'],
-                                                resolution= dataset_conf['resolution'],
-                                                activation = model_conf['activation'], 
-                                                data = dataset_conf['data']
-                                                )
-                                    
-        test_loader  = get_test_data(model_conf['encoder'],
-                                    model_conf['encoder_weight'],
-                                    dataset_conf['test_image_dir_cropped'],
-                                    os.path.join(dataset_conf['test_mask_dir_cropped'],dataset_conf['data']),
-                                    resolution=0)
-
         model = train_validate(epoch = training_conf['epoch'],
                                     lr= training_conf['lr'],
                                     weight_decay=training_conf['weight_decay'],
@@ -117,7 +125,7 @@ def main_task(task_config, steps, device):
                                     model = model,
                                     device = device,
                                     log_dir = log_dir)
-
+        
     if test_step:
         test_model2(model, device, model_conf, dataset_conf, log_dir)
 
