@@ -7,6 +7,8 @@ https://drive.google.com/drive/folders/1DqgZF9aRhJA1Yc2iTv4P1XdrPxCOrb3e?usp=sha
 
 Download this repository
 
+pip install -r requirements.txt
+
 Change datasets_root in main.py. Use your downloaded dataset folder.
 
 Set parameters in main.py
